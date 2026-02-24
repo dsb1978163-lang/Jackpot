@@ -1871,8 +1871,8 @@ document.getElementById('setupBtn').addEventListener('click', function() {
   API = val;
   localStorage.setItem(STORAGE_KEY, API);
   document.getElementById('setupOverlay').classList.add('hidden');
-  // Trigger immediate state fetch with new URL
-  fetchState();
+  // Trigger immediate state fetch with new URL (wait for fetchState to be defined)
+  setTimeout(() => { if (typeof fetchState === 'function') fetchState(); }, 100);
 });
 
 document.getElementById('setupInput').addEventListener('keydown', function(e) {
@@ -2092,9 +2092,12 @@ function fmt(n) {
   return "$" + Math.round(n).toLocaleString();
 }
 
+// Headers needed to bypass ngrok browser warning page
+const NGROK_HEADERS = { 'ngrok-skip-browser-warning': '1' };
+
 async function fetchState() {
   try {
-    const r = await fetch(API + "/state");
+    const r = await fetch(API + "/state", { headers: NGROK_HEADERS });
     const data = await r.json();
     updateUI(data);
   } catch(e) {}
