@@ -1721,8 +1721,166 @@
   </div>
 </div>
 
+<style>
+/* ── NGROK SETUP OVERLAY ── */
+#setupOverlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(3,13,6,0.97);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+#setupOverlay.hidden { display: none; }
+.setup-card {
+  background: rgba(8,28,12,0.98);
+  border: 1px solid rgba(212,160,23,0.4);
+  border-radius: 8px;
+  padding: 48px 56px;
+  max-width: 560px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 40px rgba(212,160,23,0.08);
+}
+.setup-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem;
+  color: var(--gold-bright);
+  text-shadow: 0 0 30px rgba(245,200,66,0.4);
+  margin-bottom: 8px;
+}
+.setup-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 4px;
+  color: rgba(26,171,66,0.6);
+  text-transform: uppercase;
+  margin-bottom: 32px;
+}
+.setup-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  color: rgba(212,160,23,0.6);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.setup-input {
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(26,171,66,0.3);
+  border-radius: 4px;
+  padding: 14px 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--cream);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 20px;
+}
+.setup-input:focus {
+  border-color: rgba(26,171,66,0.7);
+  box-shadow: 0 0 20px rgba(26,171,66,0.2);
+}
+.setup-input::placeholder { color: rgba(245,237,214,0.2); }
+.setup-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #0d5c20, #1aab42, #0d5c20);
+  background-size: 200% 100%;
+  color: var(--cream);
+  border: 1px solid rgba(26,171,66,0.7);
+  border-radius: 4px;
+  padding: 14px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  animation: greenShimmer 4s linear infinite;
+  margin-bottom: 16px;
+}
+.setup-btn:hover { box-shadow: 0 0 40px rgba(26,171,66,0.5); }
+.setup-hint {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  color: rgba(245,237,214,0.2);
+  line-height: 1.8;
+}
+.setup-hint code {
+  color: rgba(26,171,66,0.6);
+  background: rgba(26,171,66,0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.setup-change-btn {
+  position: fixed;
+  bottom: 220px;
+  right: 20px;
+  z-index: 9999;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(212,160,23,0.2);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 2px;
+  color: rgba(212,160,23,0.4);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.setup-change-btn:hover { color: var(--gold); border-color: rgba(212,160,23,0.5); }
+</style>
+
+<!-- NGROK SETUP OVERLAY -->
+<div id="setupOverlay">
+  <div class="setup-card">
+    <div class="setup-title">🎰 Jackpot</div>
+    <div class="setup-sub">DonutSMP · Live Jackpot</div>
+    <div class="setup-label">Your ngrok URL</div>
+    <input class="setup-input" id="setupInput" type="text"
+      placeholder="https://abc123.ngrok-free.app" autocomplete="off" spellcheck="false">
+    <button class="setup-btn" id="setupBtn">Connect & Watch Live</button>
+    <div class="setup-hint">
+      Get your URL by running <code>ngrok http 5050</code> on your PC<br>
+      then paste the <code>Forwarding</code> URL above
+    </div>
+  </div>
+</div>
+<button class="setup-change-btn" id="setupChangeBtn" onclick="document.getElementById('setupOverlay').classList.remove('hidden')">⚙ Change URL</button>
+
 <script>
-const API = "http://localhost:5050";
+// ── API CONFIG ────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'jackpot_api_url';
+let API = localStorage.getItem(STORAGE_KEY) || '';
+
+// If we already have a saved URL, skip the setup screen
+if (API) {
+  document.getElementById('setupOverlay').classList.add('hidden');
+}
+
+document.getElementById('setupBtn').addEventListener('click', function() {
+  let val = document.getElementById('setupInput').value.trim();
+  // Strip trailing slash
+  val = val.replace(/\/$/, '');
+  if (!val.startsWith('http')) {
+    val = 'https://' + val;
+  }
+  if (!val) return;
+  API = val;
+  localStorage.setItem(STORAGE_KEY, API);
+  document.getElementById('setupOverlay').classList.add('hidden');
+  // Trigger immediate state fetch with new URL
+  fetchState();
+});
+
+document.getElementById('setupInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('setupBtn').click();
+});
+
+// Pre-fill input if we have a saved URL
+if (API) document.getElementById('setupInput').value = API;
 let lastWinnerName  = null;
 let lastRefundName  = null;
 let lastRunning     = false;
